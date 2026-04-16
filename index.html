@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flash Reflex | Reaction Speed Test</title>
+    <meta name="description" content="Test your reaction speed. Simple, fast, and addictive.">
+    
+    <style>
+        :root {
+            --bg-idle: #2b87d1;
+            --bg-waiting: #ce2636; /* Red */
+            --bg-ready: #4bdb6a;   /* Green */
+            --bg-early: #4b5056;   /* Dark Grey */
+            --text-color: #ffffff;
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none; /* Prevent text selection on rapid clicks */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: #1a1a1a;
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to game area */
+        }
+
+        .brand {
+            font-weight: 800;
+            font-size: 1.2rem;
+            opacity: 0.8;
+            pointer-events: auto;
+        }
+
+        .best-score {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            pointer-events: auto;
+        }
+
+        /* --- Main Game Area --- */
+        #game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+        }
+
+        /* State Classes */
+        .state-idle { background-color: var(--bg-idle); }
+        .state-waiting { background-color: var(--bg-waiting); }
+        .state-ready { background-color: var(--bg-ready); }
+        .state-early { background-color: var(--bg-early); }
+
+        /* Typography & Icons */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            line-height: 1.1;
+        }
+
+        p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        /* Animation for Early Click */
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* --- Footer & Monetization --- */
+        footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 15px;
+            text-align: center;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: none;
+        }
+
+        .footer-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            pointer-events: auto;
+            transition: background 0.2s;
+        }
+
+        .footer-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* --- Ad Placeholder (Monetization) --- */
+        #ad-banner {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 50px;
+            background: rgba(0,0,0,0.2);
+            border: 1px dashed rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            z-index: 5;
+            pointer-events: none; /* Don't interfere with game */
+        }
+
+        /* --- Leaderboard Modal --- */
+        #leaderboard-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #222;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .score-list {
+            list-style: none;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .score-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .close-btn {
+            background: var(--bg-idle);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            h1 { font-size: 2.2rem; }
+            .icon { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">⚡ Flash Reflex</div>
+        <div class="best-score">Best: <span id="best-score-display">---</span> ms</div>
+    </header>
+
+    <!-- Main Clickable Area -->
+    <main id="game-area" class="state-idle">
+        <div id="game-content">
+            <span class="icon">⚡</span>
+            <h1>Click to Start</h1>
+            <p>Test your reaction speed.</p>
+        </div>
+    </main>
+
+    <!-- Ad Placeholder -->
+    <div id="ad-banner">Ad Space (Banner 320x50)</div>
+
+    <!-- Footer Controls -->
+    <footer>
+        <button class="footer-btn" onclick="toggleLeaderboard()">🏆 Leaderboard</button>
+        <button class="footer-btn" onclick="alert('Monetization: This would open Premium purchase.')">💎 Go Premium</button>
+    </footer>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal">
+        <div class="modal-content">
+            <h2>Top Scores</h2>
+            <ul class="score-list" id="score-list">
+                <!-- Scores injected by JS -->
+                <li><span>No scores yet</span></li>
+            </ul>
+            <button class="close-btn" onclick="toggleLeaderboard()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 🔥 CORE GAME LOGIC
+         * Designed for speed and reliability.
+         */
+
+        // --- Elements ---
+        const gameArea = document.getElementById('game-area');
+        const contentDiv = document.getElementById('game-content');
+        const bestScoreDisplay = document.getElementById('best-score-display');
+        const scoreList = document.getElementById('score-list');
+        const modal = document.getElementById('leaderboard-modal');
+
+        // --- State Variables ---
+        let gameState = 'idle'; // idle, waiting, ready, early
+        let startTime = 0;
+        let timeoutId = null;
+        let bestScore = localStorage.getItem('reactionBestScore') || null;
+        let scoreHistory = JSON.parse(localStorage.getItem('reactionHistory')) || [];
+
+        // --- Init ---
+        if (bestScore) {
+            bestScoreDisplay.textContent = bestScore;
+        }
+
+        // --- Event Listeners ---
+        // Use mousedown/touchstart for faster response than 'click'
+        gameArea.addEventListener('mousedown', handleInput);
+        gameArea.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent ghost mouse events
+            handleInput(e);
+        });
+
+        // --- Core Functions ---
+
+        function startGame() {
+            gameState = 'waiting';
+            updateUI('waiting');
+            
+            // Random delay between 2s and 5s (2000ms - 5000ms)
+            const randomDelay = Math.floor(Math.random() * 3000) + 2000;
+            
+            timeoutId = setTimeout(() => {
+                triggerGreen();
+            }, randomDelay);
+        }
+
+        function triggerGreen() {
+            if (gameState !== 'waiting') return;
+            
+            gameState = 'ready';
+            startTime = performance.now(); // High precision timer
+            updateUI('ready');
+        }
+
+        function handleInput(e) {
+            // Prevent multiple clicks firing logic if not needed, 
+            // but for reaction games, rapid fire is okay.
+            
+            if (gameState === 'idle' || gameState === 'early') {
+                startGame();
+            } 
+            else if (gameState === 'waiting') {
+                // User clicked too early!
+                clearTimeout(timeoutId); // Stop the pending green
+                triggerEarlyClick();
+            } 
+            else if (gameState === 'ready') {
+                // Valid click
+                const endTime = performance.now();
+                const reactionTime = Math.round(endTime - startTime);
+                endGame(reactionTime);
+            }
+        }
+
+        function endGame(time) {
+            gameState = 'idle'; // Reset to idle logic, but we show result first
+            
+            // Visual shake if slow, pulse if fast? 
+            // Keep it simple: Show result text.
+            updateUI('result', time);
+
+            // Save Logic
+            saveScore(time);
+        }
+
+        function triggerEarlyClick() {
+            gameState = 'early';
+            updateUI('early');
+            
+            // Add shake animation
+            gameArea.classList.add('shake');
+            setTimeout(() => gameArea.classList.remove('shake'), 400);
+        }
+
+        // --- UI & Rendering ---
+
+        function updateUI(state, data = null) {
+            // Reset Classes
+            gameArea.className = ''; 
+            
+            // Apply new state and content
+            switch(state) {
+                case 'waiting':
+                    gameArea.classList.add('state-waiting');
+                    contentDiv.innerHTML = `
+                        <span class="icon">...</span>
+                        <h1>Wait for Green</h1>
+                    `;
+                    break;
+
+                case 'ready':
+                    gameArea.classList.add('state-ready');
+                    contentDiv.innerHTML = `
+                        <span class="icon">CLICK!</span>
+                    `;
+                    break;
+
+                case 'early':
+                    gameArea.classList.add('state-early');
+                    contentDiv.innerHTML = `
+                        <span class="icon">⚠️</span>
+                        <h1>Too Soon!</h1>
+                        <p>Click to try again.</p>
+                    `;
+                    break;
+
+                case 'result':
+                    gameArea.classList.add('state-idle');
+                    
+                    let rank = "Average";
+                    if (data < 200) rank = "Godlike ⚡";
+                    else if (data < 250) rank = "Pro 🏆";
+                    else if (data < 300) rank = "Good 🙂";
+                    else if (data > 400) rank = "Turtle 🐢";
+
+                    contentDiv.innerHTML = `
+                        <span class="icon">⏱️</span>
+                        <h1>${data} ms</h1>
+                        <p>${rank}</p>
+                        <p style="margin-top:10px; font-size: 0.9rem; opacity: 0.7;">Click to play again</p>
+                    `;
+                    break;
+            }
+        }
+
+        // --- Data Storage ---
+
+        function saveScore(time) {
+            // Update Best Score
+            if (!bestScore || time < bestScore) {
+                bestScore = time;
+                localStorage.setItem('reactionBestScore', bestScore);
+                bestScoreDisplay.textContent = bestScore;
+            }
+
+            // Update History (Last 5 scores)
+            scoreHistory.unshift(time);
+            if (scoreHistory.length > 5) scoreHistory.pop();
+            localStorage.setItem('reactionHistory', JSON.stringify(scoreHistory));
+        }
+
+        // --- Leaderboard System ---
+
+        function toggleLeaderboard() {
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                renderLeaderboard();
+                modal.style.display = 'flex';
+            }
+        }
+
+        function renderLeaderboard() {
+            scoreList.innerHTML = '';
+            
+            // 1. Show Local Best
+            if (bestScore) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>Personal Best</span> <span style="color:#4bdb6a">${bestScore} ms</span>`;
+                scoreList.appendChild(li);
+            } else {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>No local scores yet</span>`;
+                scoreList.appendChild(li);
+            }
+
+            // 2. Show Recent History
+            if (scoreHistory.length > 0) {
+                scoreHistory.forEach((score, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>Attempt #${index + 1}</span> <span>${score} ms</span>`;
+                    scoreList.appendChild(li);
+                });
+            }
+
+            // 3. Placeholder for Online/Firebase Integration
+            const divider = document.createElement('li');
+            divider.innerHTML = `<hr style="border-color:#333; opacity:0.3">`;
+            scoreList.appendChild(divider);
+
+            const onlineLi = document.createElement('li');
+            onlineLi.innerHTML = `<span style="opacity:0.5; font-size:0.8rem">Global Leaderboard (Connect Firebase to enable)</span>`;
+            scoreList.appendChild(onlineLi);
+        }
+
+    </script>
+</body>
+</html>
